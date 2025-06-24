@@ -60,6 +60,7 @@ int breakMinutesRemaining = breakMinutes;
 int cycles = 0;
 bool paused = false;
 bool minutePassed = false;
+bool timer_hidden = false;
 
 unsigned long startMillis, currentMillis;
 const unsigned int interval = 1000;  // time it takes to tick the clock
@@ -77,13 +78,6 @@ const unsigned int interval = 1000;  // time it takes to tick the clock
 void setup() {
   Serial.begin(9600);
   lcd.begin(16, 2); 
-
-  // Heart chars
-  /*
-  for (int i = 0, n = 2; i < n; ++i) {
-    lcd.createChar(i+2, CHARRAY_PULSING_HEART[i]);
-  }
-  */
 
   lcd.createChar(CHAR_LEFT_ARROW, LEFT_ARROW);
   lcd.createChar(CHAR_CONFIRM, CONFIRM);
@@ -103,19 +97,7 @@ void setup() {
   // Initial print
   startMillis = millis();
   
-  pomodoro_setup();
-}
-
-void pomodoro_setup() {
-  lcd.home();
-  lcd.print("Set Pomodoro");
-
-  lcd.setCursor(13, 0);
-  lcd.write(byte(CHAR_LEFT_ARROW));
-  lcd.write(byte(CHAR_CONFIRM));
-  lcd.write(byte(CHAR_RIGHT_ARROW));
-
-  printTime(workMinutes);
+  setup_interface(&workMinutes);
 }
 
 void loop() {
@@ -151,22 +133,18 @@ void loop() {
         mode = POMODORO_WORK;
 
         // Transition to work mode
-        lcd.clear();
-        lcd.home();
-        lcd.print("Lock in!");
-        lcd.setCursor(14, 0);
-        lcd.write(byte(CHAR_RESUME));
-        lcd.write(byte(CHAR_SKIP));
-        printTime(workMinutesRemaining);
+        work_interface();
       }
       breakMinutesRemaining = breakMinutes;
       break;
 
     case POMODORO_WORK:
       // SKIP
-      skip_button();
+      skip_button(&workMinutesRemaining);
       // PAUSE BUTTON
-      pause_button();
+      pause_button(work_interface);
+      // VISIBILITY BUTTON
+      visibility_button(work_interface);
 
       if (minutePassed) {
         workMinutesRemaining--;
@@ -182,23 +160,7 @@ void loop() {
           alarm();
 
           // Transition to break mode
-          lcd.clear();
-          lcd.home();
-          lcd.print("Break time!");
-
-          // Skip
-          lcd.setCursor(14, 0);
-          lcd.write(byte(CHAR_RESUME));
-          lcd.write(byte(CHAR_SKIP));
-
-          // Cycles
-          int col = cycles < 10 ? 13 : 12;
-          lcd.setCursor(col, 1);
-          lcd.write(byte(CHAR_CYCLE_1));
-          lcd.write(byte(CHAR_CYCLE_2));
-          lcd.print(cycles);
-
-          printTime(breakMinutesRemaining);
+          break_interface();
         } else {
           printTime(workMinutesRemaining);
         }
@@ -207,9 +169,13 @@ void loop() {
 
     case POMODORO_BREAK:
       /// SKIP
-      skip_button();
+      skip_button(&breakMinutesRemaining);
+
+      // VISIBILITY BUTTON
+      visibility_button(break_interface);
+
       // PAUSE BUTTON
-      pause_button();
+      pause_button(break_interface);
 
       if (minutePassed) {
         breakMinutesRemaining--;
@@ -220,13 +186,7 @@ void loop() {
           alarm();
 
           // Transition to work mode
-          lcd.clear();
-          lcd.home();
-          lcd.print("Lock in!");
-          lcd.setCursor(14, 0);
-          lcd.write(byte(CHAR_PAUSE));
-          lcd.write(byte(CHAR_SKIP));
-          printTime(workMinutesRemaining);
+          work_interface();
         } else {
           printTime(breakMinutesRemaining);
         }
@@ -235,6 +195,7 @@ void loop() {
   }
 }
 
+// Plays a cute alarm with piezo
 void alarm() {
   for (int i = 1; i <= 5; ++i) {
     tone(BUZZER, 250 * i, 200);
@@ -242,6 +203,7 @@ void alarm() {
   }
 }
 
+// Wipes the time section
 void clearTime() {
   lcd.setCursor(0, 1);
   lcd.print("        ");

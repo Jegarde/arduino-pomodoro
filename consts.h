@@ -89,6 +89,29 @@ const byte CONFIRM[8] = {
     B00000,
     B00000,
 };
+
+const byte TIMER_VISIBLE[8] = {
+    B00000,
+    B01110,
+    B10001,
+    B10101,
+    B10001,
+    B01110,
+    B00000,
+    B00000,
+};
+
+const byte TIMER_HIDDEN[8] = {
+    B00000,
+    B01110,
+    B11111,
+    B11111,
+    B10001,
+    B01110,
+    B00000,
+    B00000,
+};
+
 const byte CHARRAY_PULSING_HEART[2][8] = {
   {
     B00000,

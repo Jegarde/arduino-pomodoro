@@ -1,5 +1,6 @@
 // Pauses with button 2
-void pause_button() {
+// Returns true if pressed
+void pause_button(void interface_func()) {
   if (buttons & BUTTON_2_PRESSED) {
       paused = !paused;
       lcd.setCursor(14, 0);
@@ -10,17 +11,44 @@ void pause_button() {
       lcd.setCursor(10, 1);
       if (paused)
         lcd.print("PAUSED");
-      else
-        lcd.print("      ");
+      else  {
+        interface_func();
+      }
+
+      return true;
     }
+    return false;
 }
 
 // Skips with button 3
-void skip_button() {
+// Returns true if pressed
+bool skip_button(int *minutes) {
   if (buttons & BUTTON_3_PRESSED) {
-      workMinutesRemaining = 0;
+      *minutes = 0;
       minutePassed = true;
-    }
+      return true;
+  }
+  return false;
+}
+
+// Hides timer with button 1
+// Returns true if pressed
+bool visibility_button(void interface_func()) {
+  if (buttons & BUTTON_1_PRESSED) {
+      timer_hidden = !timer_hidden;
+      if (timer_hidden) {
+        lcd.setCursor(0, 1);
+        lcd.print("Focus!  ");
+        lcd.setCursor(13, 0);
+        lcd.print("X");
+      } else {
+        interface_func();
+        lcd.setCursor(13, 0);
+        lcd.print("O");
+      }
+      return true;
+  }
+  return false;
 }
 
 // Time set buttons
