@@ -8,6 +8,7 @@ Demonstration: https://youtu.be/Fk8wHDysHaA
 - Skipping the timer.
 - Pausing the timer.
 - Hiding the timer.
+- Keeps count of the cycles.
 - Piezo alarm when timer runs out.
 
 ## What & why
