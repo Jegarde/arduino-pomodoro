@@ -5,7 +5,9 @@ Demonstration: https://youtu.be/Fk8wHDysHaA
 ## Features
 - Set work time from 5 minutes to 2 hours.
 - Set break time from 5 minutes to 2 hours.
-- Skipping work or break timer.
+- Skipping the timer.
+- Pausing the timer.
+- Hiding the timer.
 - Piezo alarm when timer runs out.
 
 ## What & why
