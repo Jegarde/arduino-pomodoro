@@ -36,7 +36,7 @@ const byte SKIP[8] = {
 };
 
 const byte PAUSE[8] = {
-    B00000,
+    B01010,
     B01010,
     B01010,
     B01010,
