@@ -13,11 +13,11 @@ This is a fun little beginner project I put together with my [Arduino Starter Pa
 
 I have struggled with getting started on personal projects, and if I do get started, finishing it is another monumental task. By taking it easy, I was able to put this out and have fun while doing it. :)
 
-It's projects like these that teach me to organize and write better code, so my future code will be better and cleaner, even if I don't try as hard. After all, I'm not that familiar with C and Arduino's workflow.
+It's projects like these that teach me to organize and write better code, so my future code will be better and cleaner, even if I don't try as hard. After all, I'm not that familiar with C and Arduino's workflow yet.
 
 ## What I learned
 - Bit masks and bit manipulation
-- Using piezo and a liquid crystal display.
+- Using a piezo and a liquid crystal display.
 - Arduino IDE tabs.
 
 ## Issue I ran to with piezos and liquid crystal displays, and how I fixed it
