@@ -50,6 +50,7 @@ enum Modes {
 } mode = WORK_SETUP;
 
 int buttonsPressed = 0;
+int buttons = 0;
 
 int workMinutes = 25;
 int breakMinutes = 5;
@@ -57,9 +58,21 @@ int workMinutesRemaining = workMinutes;
 int breakMinutesRemaining = breakMinutes;
 
 int cycles = 0;
+bool paused = false;
+bool minutePassed = false;
 
 unsigned long startMillis, currentMillis;
 const unsigned int interval = 1000;  // time it takes to tick the clock
+
+// Custom chars
+#define CHAR_LEFT_ARROW 0
+#define CHAR_RIGHT_ARROW 1
+#define CHAR_SKIP 2
+#define CHAR_CYCLE_1 3
+#define CHAR_CYCLE_2 4
+#define CHAR_PAUSE 5
+#define CHAR_RESUME 6
+#define CHAR_CONFIRM 7
 
 void setup() {
   Serial.begin(9600);
@@ -72,12 +85,14 @@ void setup() {
   }
   */
 
-  lcd.createChar(0, LEFT_ARROW);
-  lcd.createChar(1, CONFIRM);
-  lcd.createChar(2, RIGHT_ARROW);
-  lcd.createChar(3, SKIP);
-  lcd.createChar(4, CYCLE[0]);
-  lcd.createChar(5, CYCLE[1]);
+  lcd.createChar(CHAR_LEFT_ARROW, LEFT_ARROW);
+  lcd.createChar(CHAR_CONFIRM, CONFIRM);
+  lcd.createChar(CHAR_RIGHT_ARROW, RIGHT_ARROW);
+  lcd.createChar(CHAR_SKIP, SKIP);
+  lcd.createChar(CHAR_CYCLE_1, CYCLE[0]);
+  lcd.createChar(CHAR_CYCLE_2, CYCLE[1]);
+  lcd.createChar(CHAR_PAUSE, PAUSE);
+  lcd.createChar(CHAR_RESUME, RESUME);
 
   // Components
   pinMode(BUZZER, OUTPUT);
@@ -96,38 +111,29 @@ void pomodoro_setup() {
   lcd.print("Set Pomodoro");
 
   lcd.setCursor(13, 0);
-  lcd.write(byte(0));
-  lcd.write(byte(1));
-  lcd.write(byte(2));
+  lcd.write(byte(CHAR_LEFT_ARROW));
+  lcd.write(byte(CHAR_CONFIRM));
+  lcd.write(byte(CHAR_RIGHT_ARROW));
 
   printTime(workMinutes);
 }
 
 void loop() {
-  int buttons = oneShotButtonsPressed();
-  bool minutePassed = countTime();
+  buttons = oneShotButtonsPressed();
+  
+  // Don't count time if paused
+  if (!paused) minutePassed = countTime();
 
   switch (mode) {
     case WORK_SETUP:
       lcd.setCursor(12, 1);
       lcd.print("WORK");
 
-      // LEFT ARROW
-      if (buttons & BUTTON_1_PRESSED) {
-        workMinutes -= 5;
-        if (workMinutes <= 0)
-          workMinutes = 5;
-        printTime(workMinutes);
-      }
-      // RIGHT ARROW
-      else if (buttons & BUTTON_3_PRESSED) {
-        workMinutes += 5;
-        if (workMinutes >= 120)  // 2 hours cap
-          workMinutes = 120;
-        printTime(workMinutes);
-      }
+      // LEFT, RIGHT ARROW BUTTONS
+      set_time_buttons(&workMinutes);
+
       // CONFIRM
-      else if (buttons & BUTTON_2_PRESSED) {
+      if (buttons & BUTTON_2_PRESSED) {
         mode = BREAK_SETUP;
 
         lcd.setCursor(11, 1);
@@ -138,31 +144,19 @@ void loop() {
       break;
 
     case BREAK_SETUP:
-
-      // LEFT ARROW
-      if (buttons & BUTTON_1_PRESSED) {
-        breakMinutes -= 5;
-        if (breakMinutes <= 0)
-          breakMinutes = 5;
-        printTime(breakMinutes);
-      }
-      // RIGHT ARROW
-      else if (buttons & BUTTON_3_PRESSED) {
-        breakMinutes += 5;
-        if (breakMinutes >= 120)  // 2 hours cap
-          breakMinutes = 120;
-        printTime(breakMinutes);
-      }
+      // LEFT, RIGHT ARROW BUTTONS
+      set_time_buttons(&breakMinutes);
       // CONFIRM
-      else if (buttons & BUTTON_2_PRESSED) {
+      if (buttons & BUTTON_2_PRESSED) {
         mode = POMODORO_WORK;
 
         // Transition to work mode
         lcd.clear();
         lcd.home();
         lcd.print("Lock in!");
-        lcd.setCursor(15, 0);
-        lcd.write(byte(3));
+        lcd.setCursor(14, 0);
+        lcd.write(byte(CHAR_RESUME));
+        lcd.write(byte(CHAR_SKIP));
         printTime(workMinutesRemaining);
       }
       breakMinutesRemaining = breakMinutes;
@@ -170,10 +164,9 @@ void loop() {
 
     case POMODORO_WORK:
       // SKIP
-      if (buttons & BUTTON_3_PRESSED) {
-        workMinutesRemaining = 0;
-        minutePassed = true;
-      }
+      skip_button();
+      // PAUSE BUTTON
+      pause_button();
 
       if (minutePassed) {
         workMinutesRemaining--;
@@ -194,14 +187,15 @@ void loop() {
           lcd.print("Break time!");
 
           // Skip
-          lcd.setCursor(15, 0);
-          lcd.write(byte(3));
+          lcd.setCursor(14, 0);
+          lcd.write(byte(CHAR_RESUME));
+          lcd.write(byte(CHAR_SKIP));
 
           // Cycles
           int col = cycles < 10 ? 13 : 12;
           lcd.setCursor(col, 1);
-          lcd.write(byte(4));
-          lcd.write(byte(5));
+          lcd.write(byte(CHAR_CYCLE_1));
+          lcd.write(byte(CHAR_CYCLE_2));
           lcd.print(cycles);
 
           printTime(breakMinutesRemaining);
@@ -212,11 +206,10 @@ void loop() {
       break;
 
     case POMODORO_BREAK:
-      // SKIP
-      if (buttons & BUTTON_3_PRESSED) {
-        breakMinutesRemaining = 0;
-        minutePassed = true;
-      }
+      /// SKIP
+      skip_button();
+      // PAUSE BUTTON
+      pause_button();
 
       if (minutePassed) {
         breakMinutesRemaining--;
@@ -230,8 +223,9 @@ void loop() {
           lcd.clear();
           lcd.home();
           lcd.print("Lock in!");
-          lcd.setCursor(15, 0);
-          lcd.write(byte(3));
+          lcd.setCursor(14, 0);
+          lcd.write(byte(CHAR_PAUSE));
+          lcd.write(byte(CHAR_SKIP));
           printTime(workMinutesRemaining);
         } else {
           printTime(breakMinutesRemaining);

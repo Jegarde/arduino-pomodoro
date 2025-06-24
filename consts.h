@@ -25,7 +25,6 @@ const byte CYCLE[2][8] = {
 };
 
 const byte SKIP[8] = {
-    B00000,
     B01000,
     B00100,
     B10010,
@@ -33,6 +32,7 @@ const byte SKIP[8] = {
     B10010,
     B00100,
     B01000,
+    B00000,
 };
 
 const byte PAUSE[8] = {
@@ -47,13 +47,13 @@ const byte PAUSE[8] = {
 };
 
 const byte RESUME[8] = {
-    B00000,
-    B01010,
-    B01010,
-    B01010,
-    B01010,
-    B01010,
-    B01010,
+    B11000,
+    B10100,
+    B10010,
+    B10001,
+    B10010,
+    B10100,
+    B11000,
     B00000,
 };
 
