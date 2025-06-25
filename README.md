@@ -3,13 +3,14 @@
 Demonstration: https://youtu.be/Fk8wHDysHaA
 
 ## Features
-- Set work time from 5 minutes to 2 hours.
-- Set break time from 5 minutes to 2 hours.
+- Set work time from 5 minutes to 30 minutes.
+- Set break time from 5 minutes to 30 hours.
+- Set long break time from 5 minutes to 30 hours.
 - Skipping the timer.
 - Pausing the timer.
 - Hiding the timer.
 - Keeps count of the cycles.
-- Piezo alarm when timer runs out.
+- Cute piezo alarm when timer runs out.
 
 ## What & why
 This is a fun little beginner project I put together with my [Arduino Starter Pack](https://store.arduino.cc/products/arduino-starter-kit-multi-language). I didn't focus on hyper-optimizing the code or organizing it to my best ability, I just wanted to put out a simple project.
