@@ -28,193 +28,216 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 #define BUTTON_2_PRESSED (1 << 1)
 #define BUTTON_3_PRESSED (1 << 2)
 
-// Macros
-#define HAS_ANY_FLAGS(value, flags) ((value) & (flags))
-
 // Component pins
 #define BUZZER 4
 #define BUTTON_1 9
 #define BUTTON_2 12
 #define BUTTON_3 13
 
-#define SECOND 1000
+// Minute in milliseconds
 #define MINUTE 60000
 
-enum Modes {
-  WORK_SETUP,
-  BREAK_SETUP,
-  CYCLE_SETUP,
-  POMODORO_WORK,
-  POMODORO_BREAK,
-  POMODORO_FINISH
-} mode = WORK_SETUP;
+// Inputs held down
+uint8_t buttonsPressed = 0;
 
-int buttonsPressed = 0;
-int buttons = 0;
+// Input in a single loop cycle
+uint8_t buttons = 0;
 
-int workMinutes = 25;
-int breakMinutes = 5;
-int workMinutesRemaining = workMinutes;
-int breakMinutesRemaining = breakMinutes;
+// Configured timer durations
+uint8_t workMinutes = 25;
+uint8_t breakMinutes = 5;
+uint8_t longBreakMinutes = 15;
 
-int cycles = 0;
+// Timer minutes remaining
+int8_t minutesRemaining = 0;
+
+// How many pomodoro cycles have passed
+uint8_t cycles = 0;
+
+// If timer is paused
 bool paused = false;
-bool minutePassed = false;
-bool timer_hidden = false;
 
+// If timer is hidden
+bool timerHidden = false;
+
+// Did a minute pass in loop?
+bool minutePassed = false;
+
+// For counting minutes
 unsigned long startMillis, currentMillis;
-const unsigned int interval = 1000;  // time it takes to tick the clock
 
 // Custom chars
-#define CHAR_LEFT_ARROW 0
-#define CHAR_RIGHT_ARROW 1
-#define CHAR_SKIP 2
-#define CHAR_CYCLE_1 3
-#define CHAR_CYCLE_2 4
-#define CHAR_PAUSE 5
-#define CHAR_RESUME 6
-#define CHAR_CONFIRM 7
+enum CUSTOM_CHAR : uint8_t {
+    CHAR_LEFT_ARROW,
+    CHAR_RIGHT_ARROW,
+    CHAR_SKIP,
+    CHAR_CYCLE_1,
+    CHAR_CYCLE_2,
+    CHAR_PAUSE,
+    CHAR_RESUME,
+    CHAR_CONFIRM
+};
+
+// Timer states
+enum MODE : uint8_t {
+  WORK_SETUP,
+  BREAK_SETUP,
+  LONG_BREAK_SETUP,
+  POMODORO_WORK,
+  POMODORO_BREAK
+} mode = WORK_SETUP;
 
 void setup() {
-  Serial.begin(9600);
-  lcd.begin(16, 2); 
+    // Let the fun begin
+    Serial.begin(9600);
+    lcd.begin(16, 2); 
 
-  lcd.createChar(CHAR_LEFT_ARROW, LEFT_ARROW);
-  lcd.createChar(CHAR_CONFIRM, CONFIRM);
-  lcd.createChar(CHAR_RIGHT_ARROW, RIGHT_ARROW);
-  lcd.createChar(CHAR_SKIP, SKIP);
-  lcd.createChar(CHAR_CYCLE_1, CYCLE[0]);
-  lcd.createChar(CHAR_CYCLE_2, CYCLE[1]);
-  lcd.createChar(CHAR_PAUSE, PAUSE);
-  lcd.createChar(CHAR_RESUME, RESUME);
+    // Create characterse
+    lcd.createChar(CHAR_LEFT_ARROW, LEFT_ARROW);
+    lcd.createChar(CHAR_CONFIRM, CONFIRM);
+    lcd.createChar(CHAR_RIGHT_ARROW, RIGHT_ARROW);
+    lcd.createChar(CHAR_SKIP, SKIP);
+    lcd.createChar(CHAR_CYCLE_1, CYCLE[0]);
+    lcd.createChar(CHAR_CYCLE_2, CYCLE[1]);
+    lcd.createChar(CHAR_PAUSE, PAUSE);
+    lcd.createChar(CHAR_RESUME, RESUME);
 
-  // Components
-  pinMode(BUZZER, OUTPUT);
-  pinMode(BUTTON_1, INPUT);
-  pinMode(BUTTON_2, INPUT);
-  pinMode(BUTTON_3, INPUT);
+    // Components
+    pinMode(BUZZER, OUTPUT);
+    pinMode(BUTTON_1, INPUT);
+    pinMode(BUTTON_2, INPUT);
+    pinMode(BUTTON_3, INPUT);
 
-  // Initial print
-  startMillis = millis();
-  
-  setup_interface(&workMinutes);
+    // Initial print
+    startMillis = millis();
+    
+    // Begin setup
+    setupInterface();
 }
 
 void loop() {
-  buttons = oneShotButtonsPressed();
-  
-  // Don't count time if paused
-  if (!paused) minutePassed = countTime();
+    // Check for one shot input from any of the 3 buttons
+    buttons = oneShotButtonsPressed();
+    
+    // Don't count time if paused
+    if (!paused) minutePassed = countTime();
 
-  switch (mode) {
-    case WORK_SETUP:
-      lcd.setCursor(12, 1);
-      lcd.print("WORK");
+    switch (mode) {
+      case WORK_SETUP:
+          lcd.setCursor(12, 1);
+          lcd.print("WORK");
 
-      // LEFT, RIGHT ARROW BUTTONS
-      set_time_buttons(&workMinutes);
+          // LEFT, RIGHT ARROW BUTTONS
+          setTimeButtons(&workMinutes);
 
-      // CONFIRM
-      if (buttons & BUTTON_2_PRESSED) {
-        mode = BREAK_SETUP;
+          // CONFIRM
+          if (buttons & BUTTON_2_PRESSED) {
+            // Switch over to break setup
+            mode = BREAK_SETUP;
+            lcd.setCursor(11, 1);
+            lcd.print("BREAK");
+            printTime(breakMinutes);
+          }
+          minutesRemaining = workMinutes;
+          break;
 
-        lcd.setCursor(11, 1);
-        lcd.print("BREAK");
-        printTime(breakMinutes);
-      }
-      workMinutesRemaining = workMinutes;
-      break;
-
-    case BREAK_SETUP:
-      // LEFT, RIGHT ARROW BUTTONS
-      set_time_buttons(&breakMinutes);
-      // CONFIRM
-      if (buttons & BUTTON_2_PRESSED) {
-        mode = POMODORO_WORK;
-
-        // Transition to work mode
-        work_interface();
-      }
-      breakMinutesRemaining = breakMinutes;
-      break;
-
-    case POMODORO_WORK:
-      // SKIP
-      skip_button(&workMinutesRemaining);
-      // PAUSE BUTTON
-      pause_button(work_interface);
-      // VISIBILITY BUTTON
-      visibility_button(work_interface);
-
-      if (minutePassed) {
-        workMinutesRemaining--;
-
-        if (workMinutesRemaining <= 0) {
-          workMinutesRemaining = workMinutes;
-
-          // Cap cycles at 99
-          if (cycles < 99) 
-            cycles++;
-        
-          mode = POMODORO_BREAK;
-          alarm();
-
-          // Transition to break mode
-          break_interface();
-        } else {
-          printTime(workMinutesRemaining);
+      case BREAK_SETUP:
+        // LEFT, RIGHT ARROW BUTTONS
+        setTimeButtons(&breakMinutes);
+        // CONFIRM
+        if (buttons & BUTTON_2_PRESSED) {
+            // Switch over to long break setup
+            mode = LONG_BREAK_SETUP;
+            lcd.setCursor(7, 1);
+            lcd.print("LONGBREAK");
+            printTime(longBreakMinutes);
         }
-      }
-      break;
 
-    case POMODORO_BREAK:
-      /// SKIP
-      skip_button(&breakMinutesRemaining);
+        break;
 
-      // VISIBILITY BUTTON
-      visibility_button(break_interface);
+      case LONG_BREAK_SETUP:
+        // LEFT, RIGHT ARROW BUTTONS
+        setTimeButtons(&longBreakMinutes);
+        // CONFIRM
+        if (buttons & BUTTON_2_PRESSED) {
+            // Switch over to work timer
+            mode = POMODORO_WORK;
 
-      // PAUSE BUTTON
-      pause_button(break_interface);
-
-      if (minutePassed) {
-        breakMinutesRemaining--;
-
-        if (breakMinutesRemaining <= 0) {
-          breakMinutesRemaining = breakMinutes;
-          mode = POMODORO_WORK;
-          alarm();
-
-          // Transition to work mode
-          work_interface();
-        } else {
-          printTime(breakMinutesRemaining);
+            // Transition to pomodoro timer
+            timerInterface();
         }
-      }
-      break;
-  }
+        break;
+
+      case POMODORO_WORK:
+      case POMODORO_BREAK:
+        // SKIP
+        skipButton();
+        // PAUSE BUTTON
+        pauseButton();
+        // VISIBILITY BUTTON
+        visibilityButton();
+
+        // Check if a minute passed
+        if (minutePassed) {
+            minutesRemaining--;
+
+            // Check if timer ran out
+            if (minutesRemaining <= 0) {
+                // Ring the alarm
+                alarm();
+
+                // Toggle between work and break mode
+                mode = mode == POMODORO_WORK ? POMODORO_BREAK : POMODORO_WORK;
+
+                // Add a cycle. Cap at 99.
+                if (cycles < 99 && mode == POMODORO_BREAK) 
+                  cycles++;
+
+                // Update timer
+                if (mode == POMODORO_BREAK) {
+                    // After every 4 cycles, do long break
+                    minutesRemaining = 
+                        cycles % 4 == 0 ? 
+                        longBreakMinutes : breakMinutes;
+                } else {
+                    minutesRemaining = workMinutes;
+                }
+
+                // Refresh interface
+                timerInterface();
+            } else {
+                // Timer hasn't run out yet, so update it
+                if (!timerHidden) {
+                    printTime(minutesRemaining);
+                }
+            }
+        }
+        break;
+    }
 }
+
 
 // Plays a cute alarm with piezo
 void alarm() {
-  for (int i = 1; i <= 5; ++i) {
+  for (uint8_t i = 1; i <= 5; ++i) {
     tone(BUZZER, 250 * i, 200);
     delay(100);
   }
+  tone(BUZZER, 1250, 500);
 }
 
-// Wipes the time section
-void clearTime() {
+// Wipes the timer text
+void clearTimerText() {
   lcd.setCursor(0, 1);
-  lcd.print("        ");
+  lcd.print("       ");
 }
 
 // Prints time to col 0, row 1
 void printTime(int minutes) {
-  clearTime();
+  clearTimerText();
   lcd.setCursor(0, 1);
   lcd.print(minutes);
-  lcd.print(" mins");
+  lcd.print(" min");
 }
 
 // Counts time.
@@ -229,10 +252,9 @@ bool countTime() {
 }
 
 // single fire buttons presses
-int oneShotButtonsPressed() {
-  int flags = 0;
-
-  int tonePitch = 0;
+uint8_t oneShotButtonsPressed() {
+  uint8_t flags = 0;
+  uint16_t tonePitch = 0;
 
   if (digitalRead(BUTTON_1) == HIGH) {
     if ((buttonsPressed & BUTTON_1_PRESSED) == 0) {
@@ -269,15 +291,3 @@ int oneShotButtonsPressed() {
 
   return flags;
 }
-
-
-// Calculates the percentage of day completed
-/*
-int calculateDayCompleted() {
-  const float minutesInDay = 24 * 60;
-  float minutesPassed = time.hour * 60 + time.minute;
-
-  // Round with one decimal
-  return (int)round(minutesPassed / minutesInDay * 100);
-}
-*/
