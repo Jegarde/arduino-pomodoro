@@ -10,6 +10,9 @@
  * LCD VSS pin to ground
  * LCD VCC pin to 5V
  * Piezo to digital pin 4
+ * Button 1 to digital pin 9
+ * Button 2 to digital pin 12
+ * Button 3 to digital pin 13
  * 10K resistor:
  * ends to +5V and ground
 
@@ -256,7 +259,7 @@ uint8_t oneShotButtonsPressed() {
   uint8_t flags = 0;
   uint16_t tonePitch = 0;
 
-  if (digitalRead(BUTTON_1) == HIGH) {
+  if (digitalRead(BUTTON_1) == LOW) {
     if ((buttonsPressed & BUTTON_1_PRESSED) == 0) {
       flags |= BUTTON_1_PRESSED;
       buttonsPressed |= BUTTON_1_PRESSED;
@@ -265,7 +268,7 @@ uint8_t oneShotButtonsPressed() {
   } else {
     buttonsPressed = buttonsPressed & ~BUTTON_1_PRESSED;
   }
-  if (digitalRead(BUTTON_2) == HIGH) {
+  if (digitalRead(BUTTON_2) == LOW) {
     if ((buttonsPressed & BUTTON_2_PRESSED) == 0) {
       flags |= BUTTON_2_PRESSED;
       buttonsPressed |= BUTTON_2_PRESSED;
@@ -274,7 +277,7 @@ uint8_t oneShotButtonsPressed() {
   } else {
     buttonsPressed = buttonsPressed & ~BUTTON_2_PRESSED;
   }
-  if (digitalRead(BUTTON_3) == HIGH) {
+  if (digitalRead(BUTTON_3) == LOW) {
     if ((buttonsPressed & BUTTON_3_PRESSED) == 0) {
       flags |= BUTTON_3_PRESSED;
       buttonsPressed |= BUTTON_3_PRESSED;
