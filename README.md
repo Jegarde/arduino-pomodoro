@@ -23,6 +23,7 @@ It's projects like these that teach me to organize and write better code, so my 
 - Bit masks and bit manipulation
 - Using a piezo and a liquid crystal display.
 - Arduino IDE tabs.
+- Pull up resistors.
 
 ## Issue I ran to with piezos and liquid crystal displays, and how I fixed it
 Using Arduino's `tone()` function to make sound with the piezo caused my lcd display to corrupt. It had something to do with electromagnetic interference. Better explained here: https://forum.arduino.cc/t/please-help-circuit-with-lcd-screen-and-piezo/849076
